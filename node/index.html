@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>График с японскими свечами</title>
+
+		<style>
+			#container {
+				width: 800px;
+				height: 400px;
+				margin: 0 auto;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="container"></div>
+		<script src="lcs.js"></script>
+
+		<script>
+			const socket = new WebSocket("ws://localhost:3000"); // Use the appropriate server URL
+
+			socket.onopen = () => {
+				console.log("Connected to WebSocket server");
+			};
+
+			socket.onclose = () => {
+				console.log("Connection to WebSocket server closed");
+			};
+
+			document.addEventListener("DOMContentLoaded", function () {
+				const container = document.getElementById("container");
+				const chart = LightweightCharts.createChart(container, {
+					width: 800,
+					height: 400,
+				});
+
+				const mainSeries = chart.addCandlestickSeries();
+
+				socket.onmessage = (event) => {
+          // console.log(JSON.parse(event.data).data)
+          jsonData = JSON.parse(event.data).data
+					console.log(`Received: ${jsonData}`);
+					mainSeries.setData(jsonData);
+				};
+			});
+		</script>
+	</body>
+</html>

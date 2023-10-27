@@ -1,5 +1,27 @@
 import fetch from "node-fetch";
 
+const refreshUrl = "https://webserver.jusaninvest.kz/api/auth/refresh-token";
+const loginUrl = "https://webserver.jusaninvest.kz/api/auth/login";
+const HsbkURL =
+	"https://server.jusaninvest.kz/api/portfolios/orderbook?stockid=105";
+
+const loginData = {
+	headers: {
+		accept: "application/json, text/plain, */*",
+		authorization: "Basic ",
+		"sec-ch-ua":
+			'"Chromium";v="118", "Google Chrome";v="118", "Not=A?Brand";v="99"',
+		"sec-ch-ua-mobile": "?0",
+		"sec-ch-ua-platform": '"Windows"',
+	},
+	referrer: "https://trading.jusaninvest.kz/",
+	referrerPolicy: "strict-origin-when-cross-origin",
+	body: null,
+	method: "GET",
+	mode: "cors",
+	credentials: "include",
+};
+
 const sleep = (waitTimeInMs) =>
 	new Promise((resolve) => setTimeout(resolve, waitTimeInMs));
 
@@ -16,36 +38,59 @@ async function fetchData(url, req) {
 	}
 }
 
-while (true) {
-	await sleep(2000).then(async () => {
-		const loginUrl = "https://webserver.jusaninvest.kz/api/auth/login";
-		const loginData = {
+function GetRefreshData(lastToken) {
+	try {
+		const data = {
 			headers: {
 				accept: "application/json, text/plain, */*",
-				authorization: "Basic ",
+				"accept-language": "ru,en;q=0.9",
+				"cache-control": "no-cache",
+				"content-type": "application/x-www-form-urlencoded",
+				pragma: "no-cache",
 				"sec-ch-ua":
 					'"Chromium";v="118", "Google Chrome";v="118", "Not=A?Brand";v="99"',
 				"sec-ch-ua-mobile": "?0",
 				"sec-ch-ua-platform": '"Windows"',
+				"sec-fetch-dest": "empty",
+				"sec-fetch-mode": "cors",
+				"sec-fetch-site": "same-site",
+				cookie: "refreshToken=" + lastToken,
+				Referer: "https://trading.jusaninvest.kz/",
+				"Referrer-Policy": "strict-origin-when-cross-origin",
 			},
-			referrer: "https://trading.jusaninvest.kz/",
-			referrerPolicy: "strict-origin-when-cross-origin",
 			body: null,
-			method: "GET",
-			mode: "cors",
-			credentials: "include",
+			method: "POST",
 		};
+		return data;
+	} catch (error) {
+		console.error("An error occurred:", error);
+	}
+}
 
-		const LoginResponse = await fetchData(loginUrl, loginData);
+function GetRefreshTokenInStr(stringData) {
+	let _refreshToken = stringData
+		.get("set-cookie")
+		.split(";")[0]
+		.split("refreshToken=")[1];
+	return _refreshToken;
+}
 
-		let Token = LoginResponse.json.token;
-		let refreshToken = LoginResponse.headers
-			.get("set-cookie")
-			.split(";")[0]
-			.split("refreshToken=")[1];
+const LoginResponse = await fetchData(loginUrl, loginData);
+let Token = LoginResponse.json.token;
+let RefreshToken = GetRefreshTokenInStr(LoginResponse.headers);
+console.log("Token  =", Token);
+console.log("RefreshToken  =", RefreshToken);
+const NewToken = await fetchData(refreshUrl, GetRefreshData(RefreshToken));
+Token = NewToken.json.token;
+RefreshToken = GetRefreshTokenInStr(NewToken.headers);
+console.log("\nToken  =", Token);
+console.log("RefreshToken  =", RefreshToken);
 
-		const HsbkURL =
-			"https://server.jusaninvest.kz/api/portfolios/orderbook?stockid=105";
+while (true) {
+	await sleep(6000).then(async () => {
+		const NewToken = await fetchData(refreshUrl, GetRefreshData(RefreshToken));
+		Token = NewToken.json.token;
+		RefreshToken = GetRefreshTokenInStr(NewToken.headers);
 		const HsbkData = {
 			headers: {
 				accept: "*/*",
